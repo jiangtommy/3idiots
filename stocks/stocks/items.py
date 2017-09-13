@@ -8,8 +8,9 @@
 import scrapy
 
 
-class StocksItem(scrapy.Item):
+class StocksListItem(scrapy.Item):
     # define the fields for your item here like:
     # name = scrapy.Field()
     stockName = scrapy.Field()
     stockCode = scrapy.Field()
+    exchange = scrapy.Field()

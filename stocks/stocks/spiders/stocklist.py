@@ -1,25 +1,29 @@
 from scrapy import Spider
 from scrapy import Selector
-from stocks.items import StocksItem
+from stocks.items import StocksListItem
 import re
 
-class DfcfSpider(Spider):
-    name = 'dfcf'
+class StockListSpider(Spider):
+    name = 'stocklist'
     allowed_domain = ['eastmoney.com']
     start_urls = ['http://quote.eastmoney.com/stocklist.html#sh/']
 
     def parse(self, response):
         sel = Selector(response)
-        item = StocksItem()
+        item = StocksListItem()
 
         contsh=sel.xpath('//div[@class="qox"]/div[@class="quotebody"]/div/ul')[0].extract()
         for stockSH in re.findall(r'<li>.*?<a.*?target=.*?>(.*?)</a>',contsh):
+            if (stockSH.split("(")[1][:-1]).encode('utf-8').startswith('20'):
+                continue
             item["stockName"] = stockSH.split("(")[0].encode('utf-8')
-            item["stockCode"]=("sh"+stockSH.split("(")[1][:-1]).encode('utf-8')
+            item["stockCode"]=(stockSH.split("(")[1][:-1]).encode('utf-8')
+            item["exchange"] = "sh".encode('utf-8')
             yield item
 
         contsz=sel.xpath('//div[@class="qox"]/div[@class="quotebody"]/div/ul')[1].extract()
         for stockSZ in re.findall(r'<li>.*?<a.*?target=.*?>(.*?)</a>',contsz):
             item["stockName"] = stockSZ.split("(")[0].encode('utf-8')
-            item["stockCode"]=("sz"+stockSZ.split("(")[1][:-1]).encode('utf-8')
+            item["stockCode"]=(stockSZ.split("(")[1][:-1]).encode('utf-8')
+            item["exchange"] = "sz".encode('utf-8')
             yield item
