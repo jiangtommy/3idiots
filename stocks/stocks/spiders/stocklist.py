@@ -1,6 +1,6 @@
 from scrapy import Spider
 from scrapy import Selector
-from stocks.items import StocksListItem
+from stocks.items import stockItem
 import re
 
 class StockListSpider(Spider):
@@ -10,7 +10,7 @@ class StockListSpider(Spider):
 
     def parse(self, response):
         sel = Selector(response)
-        item = StocksListItem()
+        item = stockItem()
 
         contsh=sel.xpath('//div[@class="qox"]/div[@class="quotebody"]/div/ul')[0].extract()
         for stockSH in re.findall(r'<li>.*?<a.*?target=.*?>(.*?)</a>',contsh):

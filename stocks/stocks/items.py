@@ -18,7 +18,6 @@ class stockItem(scrapy.Item):
 class userItem(scrapy.Item):
 	userName = scrapy.Field()
 	userId = scrapy.Field()
-	starCount = scrapy.Field()
 
 class postItem(scrapy.Item):
 	title = scrapy.Field()
@@ -27,15 +26,13 @@ class postItem(scrapy.Item):
 	postId = scrapy.Field()
 	content = scrapy.Field()
 	postTime = scrapy.Field()
-	readersCount = scrapy.Field()
-	commentsCount = scrapy.Field()
-	thumbUpCount = scrapy.Field()
 	forwardCount = scrapy.Field()
 
 class commentItem(scrapy.Item):
 	userId = scrapy.Field()
 	stockId = scrapy.Field()
-	postTime = scrapy.Field()
+	commentTime = scrapy.Field()
 	content = scrapy.Field()
 	commentId = scrapy.Field()
 	replyId = scrapy.Field()
+	postId = scrapy.Field()
