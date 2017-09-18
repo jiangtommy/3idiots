@@ -9,7 +9,8 @@ sys.path.append('/usr/local/lib/python2.7/site-packages')
 import pymongo
 from items import stockItem, userItem, postItem, commentItem
 
-# import logging
+import logging
+logger = logging.getLogger('pipelineslog')
 # from scrapy.utils.log import configure_logging
 
 # configure_logging(install_root_handler=False)
@@ -51,13 +52,11 @@ class MongoPipeline(object):
 			collection = self.db[STOCK_LIST]
 			if collection.find_one({"stockCode":stock_dict["stockCode"],"exchange":stock_dict["exchange"]}) is None:
 				collection.insert_one(stock_dict)
-			return item
 		elif isinstance(item, userItem):
 			user_dict = dict(item)
 			collection = self.db[USER_LIST]
 			if collection.find_one({"userId":user_dict["userId"]}) is None:
 				collection.insert_one(user_dict)
-			return
 		elif isinstance(item, postItem):
 			post_dict = dict(item)
 			collection = self.db[POST_LIST]
@@ -67,6 +66,19 @@ class MongoPipeline(object):
 			comment_dict = dict(item)
 			collection = self.db[COMMENT_LIST]
 			if collection.find_one({"commentId":comment_dict["commentId"], "postId":comment_dict["postId"]}) is None:
+				related_time = comment_dict.pop("relatedTime", None)
+				if related_time is not None:
+					relatedComment = collection.find_one({"commentTime": related_time, "postId":comment_dict["postId"]})
+					if relatedComment is not None:
+						comment_dict["relatedId"] = relatedComment["commentId"]
+						if "reply" in relatedComment:
+							relatedComment["reply"].append(comment_dict["commentId"])
+						else:
+							relatedComment["reply"] = [comment_dict["commentId"]]
+						collection.update_one({'_id':relatedComment["_id"]}, {"$set":{'reply':relatedComment["reply"]}});
 				collection.insert_one(comment_dict)
+			else:
+				logger.warning('%s is already exist' % comment_dict["commentId"])
 		else:
 			pass
+		return item

@@ -6,10 +6,10 @@ import parseUtils as utils
 import logging
 import re
 
-logger = logging.getLogger('mycustomlogger')
+logger = logging.getLogger('dfcflogger')
 
-class gubaSpider(Spider):
-    name = 'guba'
+class dfcfSpider(Spider):
+    name = 'dfcf'
     site_domain = 'http://guba.eastmoney.com'
     allowed_domain = ['eastmoney.com']
     start_urls = ['http://quote.eastmoney.com/stocklist.html#sh/']
@@ -17,7 +17,7 @@ class gubaSpider(Spider):
     def parse(self, response):
         sel = Selector(response)
         url = 'http://guba.eastmoney.com/list,000858,99_1.html'
-        logger.warning(url)
+        # logger.warning(url)
 
         yield Request(url, callback=self.parseContent)
 
@@ -41,29 +41,28 @@ class gubaSpider(Spider):
 
         def add1(matched):
             current_pagenum = int(matched.group("match")) + 1
-            return "%d" % current_pagenum
+            return "_%d" % current_pagenum
 
         sel = Selector(response)
         posts = sel.xpath('//*[@id="articlelistnew"]/div[@class="articleh"]')
-
-        #below content is used to test the single page
-        post = posts[5]
-        title = post.xpath('.//span[@class="l3"]/a/@href').extract_first()
-        post_page = self.site_domain + title
-        post_page = utils.addPageForUrl(post_page)
-        logger.warning(post_page)
-        yield Request(post_page, callback=self.parsePost)
-
         #below are used to get next pages
-        # if len(posts) > 0:
-            # current_url = response.url
-            # next_page = re.sub(r'_(?P<match>\d+)[.]', add1, current_url)
-            # for post in posts:
-            #     title = post.xpath('.//span[@class="l3"]/a/@href').extract()[0]
-            #     logger.warning(title)
-            # yield Request(next_page, callback=self.parseContent)
+        if len(posts) > 0:
+            # below content is used to test the single page
+            for post in posts:
+                title = post.xpath('.//span[@class="l3"]/a/@href').extract_first()
+                post_page = self.site_domain + title
+                post_page = utils.addPageForUrl(post_page)
+                logger.warning(post_page)
+                yield Request(post_page, callback=self.parsePost)
+            next_page = re.sub(r'_(?P<match>\d+)', add1, response.url)
+            yield Request(next_page, callback=self.parseContent)
 
     def parsePost(self, response):
+
+        def add1(matched):
+            current_pagenum = int(matched.group("match")) + 1
+            return "_%d" % current_pagenum
+
         sel = Selector(response)
         [stockId, postId] = utils.getIDSfromUrl(response.url)
         postSel = sel.xpath('//*[@id="zwcontent"]')
@@ -73,7 +72,7 @@ class gubaSpider(Spider):
             if postUserSel.extract_first() is not None:
                 item_user = userItem()
                 item_user["userName"] = postUserSel.xpath('.//text()').extract_first().strip()
-                item_user["userId"] = postUserSel.xpath('.//@data-popper').extract_first().strip()
+                item_user["userId"] = postUserSel.xpath('.//@data-popper').extract_first()
                 item_post["userId"] = item_user["userId"]
                 yield item_user
 
@@ -91,34 +90,26 @@ class gubaSpider(Spider):
             yield item_post
 
         commentsListSel = sel.xpath('//*[@id="zwlist"]/div[@class="zwli clearfix"]')
-        for commentSel in commentsListSel:
-            item_comment = commentItem()
-            commentUserSel = commentSel.xpath('.//span[@class="zwnick"]/a')
-            if commentUserSel.extract_first() is not None:
-                item_user = userItem()
-                item_user["userName"] = commentUserSel.xpath('.//text()').extract_first().strip()
-                item_user["userId"] = commentUserSel.xpath('.//@data-popper').extract_first().strip()
-                item_comment["userId"] = item_user["userId"]
-                yield item_user
-            item_comment["stockId"] = stockId
-            item_comment["postId"] = postId
-            commentTime = commentSel.xpath('.//div[@class="zwlitime"]/text()').extract_first()
-            item_comment["commentTime"] = utils.getTimefromText(commentTime)
-            item_comment["content"] = commentSel.xpath('.//div[@class="zwlitext stockcodec"]/text()').extract_first()
-            item_comment["commentId"] = commentSel.xpath('.//@data-huifuid').extract_first()
-            logging.warning(item_comment["stockId"])
-            logging.warning(item_comment["postId"])
-            logging.warning(item_comment["commentTime"])
-            logging.warning(item_comment["content"])
-            logging.warning(item_comment["commentId"])
-            logging.warning(item_comment["userId"])
-            yield item_comment
-        #     relatedCommentSel = commentSel.xpath('.//div[@class="zwlitalkbox"]')
-        #     if relatedCommentSel.extract_first() is not None:
-        #         relatedCommentTimeText = relatedCommentSel.xpath('.//div[@class="zwlitalkboxtime"]').extract_first()
-        #         relatedCommentTime = utils.getTimefromText(relatedCommentTimeText)
-        #         logging.warning('relatedCommentTime: %s' % relatedCommentTime)
-        #         relatedUserId = relatedCommentSel.xpath('.//div[@class="zwlitalkboxuinfo"]//span/@data-uid').extract_first()
-        #         logging.warning('relatedUserId: %s' % relatedUserId)
-
-
+        if commentsListSel.extract_first() is not None:
+            for commentSel in commentsListSel:
+                item_comment = commentItem()
+                commentUserSel = commentSel.xpath('.//span[@class="zwnick"]/a')
+                if commentUserSel.extract_first() is not None:
+                    item_user = userItem()
+                    item_user["userName"] = commentUserSel.xpath('.//text()').extract_first().strip()
+                    item_user["userId"] = commentUserSel.xpath('.//@data-popper').extract_first()
+                    item_comment["userId"] = item_user["userId"]
+                    yield item_user
+                item_comment["stockId"] = stockId
+                item_comment["postId"] = postId
+                commentTime = commentSel.xpath('.//div[@class="zwlitime"]/text()').extract_first()
+                item_comment["commentTime"] = utils.getTimefromText(commentTime)
+                item_comment["content"] = commentSel.xpath('.//div[@class="zwlitext stockcodec"]/text()').extract_first()
+                item_comment["commentId"] = commentSel.xpath('.//@data-huifuid').extract_first()
+                relatedCommentSel = commentSel.xpath('.//div[@class="zwlitalkbox"]')
+                if relatedCommentSel.extract_first() is not None:
+                    relatedCommentTimeText = relatedCommentSel.xpath('.//div[@class="zwlitalkboxtime"]').extract_first()
+                    item_comment["relatedTime"] = utils.getTimefromText(relatedCommentTimeText)
+                yield item_comment
+            next_page = re.sub(r'_(?P<match>\d+)', add1, response.url)
+            yield Request(next_page, callback=self.parsePost)

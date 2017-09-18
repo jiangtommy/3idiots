@@ -34,5 +34,5 @@ class commentItem(scrapy.Item):
 	commentTime = scrapy.Field()
 	content = scrapy.Field()
 	commentId = scrapy.Field()
-	replyId = scrapy.Field()
 	postId = scrapy.Field()
+	relatedTime = scrapy.Field()
