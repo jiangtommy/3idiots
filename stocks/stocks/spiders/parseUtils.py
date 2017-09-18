@@ -11,11 +11,6 @@ def addPageForUrl(url):
 def getIDSfromUrl(url):
 	return re.findall(r'[,](\d+)', url)
 
-#path format: http://avator.eastmoney.com/qface/[userId]/50
-#for example: http://avator.eastmoney.com/qface/2090113638245446/50
-def getUserIdFromImg(imgPath):
-	return re.findall(r'[/](\d+)[/]', imgPath)[0]
-
 def getTimefromText(timeText):
 	print timeText
 	formatTime = re.findall(r'\s(\d+-\d+-\d+\s+\d+:\d+:\d+)', timeText)[0]

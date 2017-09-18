@@ -47,7 +47,7 @@ class gubaSpider(Spider):
         posts = sel.xpath('//*[@id="articlelistnew"]/div[@class="articleh"]')
 
         #below content is used to test the single page
-        post = posts[0]
+        post = posts[5]
         title = post.xpath('.//span[@class="l3"]/a/@href').extract_first()
         post_page = self.site_domain + title
         post_page = utils.addPageForUrl(post_page)
@@ -65,45 +65,60 @@ class gubaSpider(Spider):
 
     def parsePost(self, response):
         sel = Selector(response)
-        item_user = userItem()
-        item_user["userName"] = sel.xpath('//*[@id="zwconttbn"]/strong/a/text()').extract_first().strip()
-        item_user["userId"] = utils.getUserIdFromImg(sel.xpath('//*[@id="zwconttphoto"]/a/img/@src').extract_first())
-        yield item_user
+        [stockId, postId] = utils.getIDSfromUrl(response.url)
+        postSel = sel.xpath('//*[@id="zwcontent"]')
+        if postSel.extract_first() is not None:
+            postUserSel = postSel.xpath('.//*[@id="zwconttbn"]/strong/a')
+            item_post = postItem()
+            if postUserSel.extract_first() is not None:
+                item_user = userItem()
+                item_user["userName"] = postUserSel.xpath('.//text()').extract_first().strip()
+                item_user["userId"] = postUserSel.xpath('.//@data-popper').extract_first().strip()
+                item_post["userId"] = item_user["userId"]
+                yield item_user
 
-        item_post = postItem()
-        [item_post["stockId"], item_post["postId"]] = utils.getIDSfromUrl(response.url)
-        item_post["title"] = sel.xpath('//*[@id="zwconttbt"]/text()').extract_first().strip()
-        item_post["userId"] = item_user["userId"]
-        postTimeText = sel.xpath('//*[@id="zwconttb"]/div[@class="zwfbtime"]/text()').extract_first()
-        item_post["postTime"] = utils.getTimefromText(postTimeText)
-        contents = sel.xpath('//*[@id="zwconbody"]//text()').extract()
-        contents = [content.strip() for content in contents]
-        item_post["content"] = '\n'.join(contents)
-        item_post["forwardCount"] = sel.xpath('//*[@id="zfnums"]/text()').extract_first()
-        yield item_post
+            item_post["stockId"] = stockId
+            item_post["postId"] = postId
+            item_post["title"] = postSel.xpath('.//*[@id="zwconttbt"]/text()').extract_first().strip()
+            postTimeText = sel.xpath('.//*[@id="zwconttb"]/div[@class="zwfbtime"]/text()').extract_first()
+            item_post["postTime"] = utils.getTimefromText(postTimeText)
+            contents = sel.xpath('//*[@id="zwconbody"]//text()').extract()
+            contents = [content.strip() for content in contents]
+            item_post["content"] = '\n'.join(contents)
+            item_post["forwardCount"] = sel.xpath('//*[@id="zfnums"]/text()').extract_first()
+            if item_post["forwardCount"] is None:
+                item_post["forwardCount"] = 0
+            yield item_post
 
         commentsListSel = sel.xpath('//*[@id="zwlist"]/div[@class="zwli clearfix"]')
-        commentSel = commentsListSel[20]
         for commentSel in commentsListSel:
-            item_user = userItem()
-            item_user["userName"] = commentSel.xpath('.//span[@class="zwnick"]/a/text()').extract_first().strip()
-            item_user["userId"] = commentSel.xpath('.//@data-huifuuid').extract_first().strip()
-            yield item_user
             item_comment = commentItem()
-            item_comment["userId"] = item_user["userId"]
-            item_comment["stockId"] = item_post["stockId"]
-            item_comment["postId"] = item_post["postId"]
+            commentUserSel = commentSel.xpath('.//span[@class="zwnick"]/a')
+            if commentUserSel.extract_first() is not None:
+                item_user = userItem()
+                item_user["userName"] = commentUserSel.xpath('.//text()').extract_first().strip()
+                item_user["userId"] = commentUserSel.xpath('.//@data-popper').extract_first().strip()
+                item_comment["userId"] = item_user["userId"]
+                yield item_user
+            item_comment["stockId"] = stockId
+            item_comment["postId"] = postId
             commentTime = commentSel.xpath('.//div[@class="zwlitime"]/text()').extract_first()
             item_comment["commentTime"] = utils.getTimefromText(commentTime)
             item_comment["content"] = commentSel.xpath('.//div[@class="zwlitext stockcodec"]/text()').extract_first()
             item_comment["commentId"] = commentSel.xpath('.//@data-huifuid').extract_first()
-            relatedCommentSel = commentSel.xpath('.//div[@class="zwlitalkbox"]')
-            if relatedCommentSel.extract_first() is not None:
-                relatedCommentTimeText = relatedCommentSel.xpath('.//div[@class="zwlitalkboxtime"]').extract_first()
-                relatedCommentTime = utils.getTimefromText(relatedCommentTimeText)
-                logging.warning('relatedCommentTime: %s' % relatedCommentTime)
-                relatedUserId = relatedCommentSel.xpath('.//div[@class="zwlitalkboxuinfo"]//span/@data-uid').extract_first()
-                logging.warning('relatedUserId: %s' % relatedUserId)
+            logging.warning(item_comment["stockId"])
+            logging.warning(item_comment["postId"])
+            logging.warning(item_comment["commentTime"])
+            logging.warning(item_comment["content"])
+            logging.warning(item_comment["commentId"])
+            logging.warning(item_comment["userId"])
             yield item_comment
+        #     relatedCommentSel = commentSel.xpath('.//div[@class="zwlitalkbox"]')
+        #     if relatedCommentSel.extract_first() is not None:
+        #         relatedCommentTimeText = relatedCommentSel.xpath('.//div[@class="zwlitalkboxtime"]').extract_first()
+        #         relatedCommentTime = utils.getTimefromText(relatedCommentTimeText)
+        #         logging.warning('relatedCommentTime: %s' % relatedCommentTime)
+        #         relatedUserId = relatedCommentSel.xpath('.//div[@class="zwlitalkboxuinfo"]//span/@data-uid').extract_first()
+        #         logging.warning('relatedUserId: %s' % relatedUserId)
 
 
